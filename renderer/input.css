@@ -1,0 +1,109 @@
+:root {
+  --panel-bg: #263d39;
+  --panel-border: rgba(237, 232, 224, 0.14);
+  --panel-ink: #f3e2b9;
+  --panel-muted: #c7c2a8;
+  --panel-dim: #9da99a;
+  --panel-accent: #e1b596;
+  --panel-rule: #61756a;
+  --font-num: "Kaiti SC", "STKaiti", "PingFang SC", sans-serif;
+  --font-ui: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: auto;
+  background: transparent;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  -webkit-user-select: none;
+}
+
+#panel {
+  position: relative;
+  width: 100%;
+  background: var(--panel-bg);
+  border: 0.5px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 20px 26px 18px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+#head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+#title {
+  font-family: var(--font-num);
+  font-size: 21px;
+  color: var(--panel-ink);
+  letter-spacing: 0.2px;
+}
+
+#sub {
+  font-size: 11px;
+  color: var(--panel-muted);
+  letter-spacing: 1.2px;
+}
+
+#cats {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+#cats[hidden] { display: none; }
+
+#cats button {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.6px;
+  color: var(--panel-muted);
+  background: transparent;
+  border: 0.5px solid var(--panel-rule);
+  border-radius: 999px;
+  padding: 6px 15px;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+  -webkit-app-region: no-drag;
+}
+
+#cats button:hover { color: var(--panel-ink); }
+
+#cats button.on {
+  color: var(--panel-accent);
+  border-color: #e1b596aa;
+}
+
+#entry {
+  -webkit-app-region: no-drag;
+  -webkit-user-select: text;
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-ui);
+  font-size: 20px;
+  line-height: 1.5;
+  color: var(--panel-ink);
+  caret-color: var(--panel-accent);
+  padding: 4px 0;
+}
+
+#entry::placeholder { color: var(--panel-dim); }
+
+#foot {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--panel-rule);
+  font-size: 11px;
+  color: var(--panel-dim);
+  letter-spacing: 0.8px;
+}

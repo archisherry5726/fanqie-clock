@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build-fix/
+release-backups/
+release-verification/
+icon-backups/
+release-backup-path.txt
+*.log
+*.bak
+.DS_Store

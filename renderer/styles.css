@@ -1,0 +1,202 @@
+@font-face{font-family:Gaegu;src:url('assets/fonts/gaegu-latin-700-normal.woff2') format('woff2');font-weight:700;font-display:swap}
+
+/* ============ 设计令牌 ============ */
+:root{
+  --bg:#263d39;            /* 墨绿底 */
+  --ink:#f3e2b9;           /* 奶油黄：主字 */
+  --ink-mute:#c5c1a6;      /* 次级 */
+  --ink-dim:#93a495;       /* 状态行 / 农历 */
+  --rule:#b4c496;          /* 蜡笔线：鼠尾草绿 */
+  --trail:#f2e6c2;         /* 已走过的笔迹 */
+  --urgent:#d8623d;        /* 末 3 分钟：赭红 */
+
+  --font-hand:Gaegu,"Kaiti SC","STKaiti",cursive;
+  --font-ui:Gaegu,"Kaiti SC","STKaiti","PingFang SC",sans-serif;
+
+  /* 大数字高度：抬头 2–3m 可读，是整屏的主角 */
+  --clock-h:clamp(150px,20.5vw,300px);
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:transparent;overflow:hidden;user-select:none;cursor:default}
+
+#stage{
+  position:relative;width:100%;height:100%;overflow:hidden;isolation:isolate;
+  background:var(--bg);color:var(--ink);
+}
+/* 纸纹：极淡的两向斜纹，只负责"这是一张纸"，不参与构图 */
+#stage::before{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.22;
+  background:
+    repeating-linear-gradient(103deg,transparent 0,transparent 3px,#dce7d90d 4px,transparent 5px),
+    repeating-linear-gradient(12deg,transparent 0,transparent 7px,#10221d12 8px,transparent 9px);
+}
+
+
+/* ============ 主区：数字 + 笔迹线 ============ */
+#timer-zone{position:absolute;left:12.6%;right:13.2%;top:47%;transform:translateY(-50%)}
+
+#clock{
+  height:var(--clock-h);line-height:1;width:max-content;max-width:100%;
+  /* 抵消 SVG viewBox 左侧留白，让数字左边缘与下方笔迹线严格对齐 */
+  margin-left:calc(var(--clock-h) * -0.066);
+  color:var(--ink);transition:color .8s ease,opacity .45s ease;
+}
+.crayon-digits{height:100%;display:flex;align-items:center}
+.crayon-digit{width:auto;height:100%;display:block;overflow:visible;flex-shrink:0}
+.crayon-digit.colon{margin:0 -6px}
+
+/* 进度：一条蜡笔横线 + 已走过的部分被重新描一遍 */
+#progress{position:relative;height:18px;margin-top:clamp(30px,5.2vh,58px);color:var(--rule);pointer-events:none}
+.crayon-rule{width:100%;height:100%;display:block;overflow:visible}
+.crayon-rule .rule{stroke:currentColor;stroke-width:2.1}
+.crayon-rule .trail{stroke:var(--trail);stroke-width:4.6;stroke-dasharray:0 99999}
+/* 进度点就是那颗番茄：横坐标=进度，形状=状态（空心→淡填→变红→填满） */
+#bar{
+  position:absolute;top:50%;left:0;width:32px;height:32px;
+  transform:translate(-50%,-50%) rotate(-4deg);
+  color:var(--trail);overflow:visible;
+  transition:left .25s linear,color .6s ease,opacity .45s ease;
+}
+/* body 用底色实填：让笔迹线从它背后断开，番茄像贴在线上的印记，
+   而不是被一根线穿过去。fill 同时承担状态语言（空心→淡填→红→填满） */
+#bar .b-body{fill:var(--bg);stroke:currentColor;stroke-width:1.6;stroke-linejoin:round;transition:fill .6s ease}
+#bar .b-calyx{fill:none;stroke:currentColor;stroke-width:1.35;stroke-linecap:round}
+
+body[data-phase=running] #bar .b-body{fill:#46594f}
+/* 注意：这里不能用元素 opacity 做"变淡"。
+   果身靠 fill:var(--bg) 不透明地盖住笔迹线，一旦整块 SVG 半透明，
+   线就会从果身背后透出来，变成番茄里的脏痕。改成只让描边用带 alpha 的色。 */
+body[data-phase=paused] #bar{color:rgba(242,230,194,.85)}
+/* 暂停 = 虚线轮廓：光靠变淡跟空闲分不开，虚断是一眼可辨的 */
+body[data-phase=paused] #bar .b-body{stroke-dasharray:2.8 3.2}
+body[data-phase=finishing] #bar{color:var(--urgent)}
+body[data-phase=finishing] #bar .b-body{fill:var(--urgent)}
+
+body[data-phase=idle] #clock{opacity:.74}
+body[data-phase=idle] .crayon-rule{opacity:.55}
+body[data-phase=idle] #bar{color:rgba(242,230,194,.66)}
+body[data-phase=paused] #clock{opacity:.55}
+body[data-phase=paused] .crayon-rule{opacity:.45}
+body[data-phase=paused] #bar,
+body[data-motion=off] #bar{transition:none}
+
+/* 末 3 分钟：整块变赭红——这是这只钟唯一的"活物感" */
+body[data-urgent=true] #clock{color:var(--urgent)}
+body[data-urgent=true] #progress{color:var(--urgent)}
+body[data-urgent=true] .crayon-rule .trail{stroke:var(--urgent)}
+body[data-urgent=true] #bar{color:var(--urgent)}
+/* 末段：轮廓变红但仍空心（还没熟）；finishing 才填满（熟了） */
+body[data-urgent=true]:not([data-phase=finishing]) #bar .b-body{fill:var(--bg)}
+body[data-phase=finishing] #clock{color:var(--urgent)}
+
+/* ============ 开始按钮：这一屏唯一的「可点入口」 ============ */
+/* 只在 idle / paused 出现。和退出按钮共用「鼠标靠近才接管点击」的热区，
+   平时整块屏仍是穿透的，桌面点得到。 */
+#start{
+  /* 挂在左下角状态行里，定位到那行字上方：字号、屏高怎么变都贴着它 */
+  position:absolute;left:0;bottom:100%;margin-bottom:7px;
+  display:flex;flex-direction:row;align-items:center;gap:9px;
+  margin-left:-2px;            /* 圆环在 viewBox 里有 2px 内缩，抵消掉才是真的左边缘对齐 */
+  padding:3px 14px 3px 0;      /* 只往右扩可点面积，不动左对齐 */
+  border:0;background:none;cursor:pointer;
+  color:var(--ink-mute);opacity:0;pointer-events:none;
+  transition:opacity .45s ease,color .3s ease;
+}
+#start svg{width:26px;height:26px;display:block;overflow:visible;flex:none}
+#start .ring{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linejoin:round;transition:stroke-width .25s ease}
+#start .tri{fill:currentColor;opacity:.88}
+#start .cap{font-family:var(--font-ui);font-size:13px;letter-spacing:.8px;color:var(--ink-dim);transition:color .25s ease}
+
+#start:hover{color:var(--ink)}
+#start:hover .ring{stroke-width:1.9}
+#start:hover .cap{color:var(--ink-mute)}
+
+body[data-phase=idle] #start{opacity:.74;pointer-events:auto}
+body[data-phase=paused] #start{opacity:.86;pointer-events:auto}
+body[data-urgent=true] #start{color:var(--urgent)}
+body[data-mode=pet] #start{display:none}
+/* 不要系统焦点框。这颗按钮靠"鼠标靠近就亮"来提示，
+   而窗口从隐藏状态 show 回来时，Chromium 会把焦点丢给页面上第一个可聚焦元素，
+   于是在左下角框出一个金边——全屏时钟上出现一个焦点框非常出戏。 */
+#start:focus,#start:focus-visible,
+#quit:focus,#quit:focus-visible{outline:none}
+
+/* ============ 左下角：这段算什么 / 第几段 ============ */
+#meta{
+  position:absolute;left:5.2%;bottom:5.4%;max-width:46%;
+  font-family:var(--font-ui);font-size:13px;letter-spacing:.8px;
+  color:var(--ink-dim);pointer-events:none;
+}
+
+/* ============ 右下角：此刻 / 今天 / 农历 ============ */
+#now{position:absolute;right:5.6%;bottom:5.2%;text-align:right;pointer-events:none;color:var(--ink-mute)}
+#now-time{
+  display:flex;justify-content:flex-end;align-items:baseline;
+  font-family:var(--font-hand);font-weight:700;
+  font-size:clamp(24px,2.3vw,33px);line-height:1;color:var(--ink);
+  margin-bottom:7px;transition:color .8s ease;
+}
+#now-time .n{display:inline-block;width:.56em;text-align:center}
+#now-time .c{display:inline-block;width:.26em;text-align:center;opacity:.55}
+#now-date,#now-lunar{font-family:var(--font-ui);font-size:13px;letter-spacing:.6px;line-height:1.55}
+#now-lunar{color:var(--ink-dim);margin-top:2px}
+body[data-urgent=true] #now-time{color:#e6c9a6}
+
+/* ============ 名片态 ============ */
+body[data-mode=pet]{-webkit-app-region:drag}
+body[data-mode=pet] #stage{border-radius:10px;border:1px solid #f3e2b922}
+body[data-mode=pet] #timer-zone{left:26px;right:6px;top:50%}
+body[data-mode=pet] #clock{height:44px;margin-left:-3px}
+body[data-mode=pet] .crayon-digit.colon{margin:0 -2px}
+body[data-mode=pet] #progress{margin-top:7px;height:7px}
+body[data-mode=pet] #bar{width:16px;height:16px}
+body[data-mode=pet] #now,body[data-mode=pet] #meta{display:none}
+
+/* ============ 退出 ============ */
+#quit{
+  position:absolute;top:30px;right:34px;width:30px;height:30px;padding:0;
+  border:0.5px solid rgba(243,226,185,.22);border-radius:50%;
+  background:transparent;color:var(--ink-mute);cursor:pointer;
+  opacity:.42;transition:opacity .3s ease,border-color .3s ease,color .3s ease,background .3s ease;
+  -webkit-app-region:no-drag;display:flex;align-items:center;justify-content:center;
+}
+#quit svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round}
+#quit:hover{opacity:1;color:var(--ink);border-color:rgba(243,226,185,.4);background:rgba(243,226,185,.06)}
+
+/* 第一次点击只是「上膛」，3 秒内再点一次才真退出，避免手滑 */
+#quit[data-armed="1"]{opacity:1;color:var(--urgent);border-color:rgba(216,98,61,.78);background:rgba(216,98,61,.10)}
+#quit-label{
+  position:absolute;right:40px;top:50%;
+  transform:translateY(-50%) translateX(4px);
+  font-family:var(--font-ui);font-size:12px;letter-spacing:1.4px;
+  color:var(--urgent);white-space:nowrap;opacity:0;pointer-events:none;
+  transition:opacity .25s ease,transform .25s ease;
+}
+#quit[data-armed="1"] #quit-label{opacity:1;transform:translateY(-50%) translateX(0)}
+body[data-mode=pet] #quit{top:6px;right:6px;width:20px;height:20px;opacity:.3;border-color:rgba(243,226,185,.16)}
+body[data-mode=pet] #quit svg{width:9px;height:9px}
+body[data-mode=pet] #quit:hover{opacity:1}
+body[data-mode=pet] #quit-label{display:none}
+
+/* ============ 提示 ============ */
+#toast{
+  position:absolute;left:50%;bottom:15%;
+  transform:translateX(-50%) translateY(6px);
+  font-family:var(--font-ui);font-size:13px;letter-spacing:.8px;
+  color:var(--ink);background:#20332fe8;border-radius:8px;padding:6px 12px;
+  max-width:90%;white-space:normal;text-align:center;
+  opacity:0;transition:opacity .4s ease,transform .4s ease;pointer-events:none;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+body[data-mode=pet] #toast{font-size:11px;bottom:0;padding:2px 5px;max-width:100%;white-space:nowrap}
+
+/* ============ 热区反馈 ============ */
+/* 必须写在所有 phase 规则之后：body[data-phase=idle] #start{opacity:.74} 的特异性和
+   下面这两条相同，谁在后面谁赢。放前面就会被 .74 盖掉，鼠标靠近也不亮。 */
+/* 鼠标一进热区就亮，不等真实 hover —— 在按下之前就说明"这里能点" */
+body[data-hot=start] #start{opacity:1;color:var(--ink)}
+body[data-hot=start] #start .cap{color:var(--ink)}
+body[data-hot=quit] #quit{opacity:1;color:var(--ink);border-color:rgba(243,226,185,.4)}
+
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}

@@ -1,0 +1,55 @@
+{
+  "name": "fanqie-clock",
+  "productName": "番茄时钟",
+  "version": "1.7.0",
+  "description": "常驻第二块屏幕的极简番茄时钟，随手记的一句话自动落进 Obsidian",
+  "main": "main.js",
+  "author": "sherry",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --mac --arm64 -c.mac.target=dir",
+    "dist": "electron-builder --mac --arm64",
+    "test": "electron tools/test-clock.js --no-sandbox",
+    "test:native": "node tools/test-native.js",
+    "test:store": "node tools/test-store.js",
+    "test:report": "node tools/test-report.js",
+    "test:recovery": "node tools/test-recovery.js"
+  },
+  "build": {
+    "appId": "com.sherry.fanqieclock",
+    "productName": "番茄时钟",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "lib/**/*",
+      "renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "darkModeSupport": true,
+      "extendInfo": {
+        "NSHighResolutionCapable": true
+      },
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.icns"
+    }
+  },
+  "devDependencies": {
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0"
+  }
+}
